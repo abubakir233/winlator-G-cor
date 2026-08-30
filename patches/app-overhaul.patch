@@ -1,5 +1,5 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index e790c64..3350d7f 100644
+index e790c64..183b0ab 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
 @@ -27,7 +27,7 @@ android {
@@ -7,7 +7,7 @@ index e790c64..3350d7f 100644
      }
 
 -    ndkVersion '24.0.8215888'
-+    ndkVersion '26.3.11579264'
++    ndkVersion '25.2.9519653'
 
      externalNativeBuild {
          cmake {
