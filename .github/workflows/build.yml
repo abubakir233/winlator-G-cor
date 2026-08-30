@@ -26,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Apply app submodule overhaul patch
-        run: git -C app apply ../patches/app-overhaul.patch
+        run: git -C app apply -p1 ../patches/app-overhaul.patch
 
       - name: Set up Java
         uses: actions/setup-java@v4
