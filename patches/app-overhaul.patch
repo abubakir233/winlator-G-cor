@@ -31,3 +31,22 @@ index e790c64..919837e 100644
 
      externalNativeBuild {
          cmake {
+diff --git a/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java b/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java
+index 84c4702..acf94cb 100644
+--- a/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java
++++ b/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java
+@@ -100,7 +100,13 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
+         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir+"/lib/x86_64-linux-gnu");
+         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir+UnixSocketConfig.SYSVSHM_SERVER_PATH);
+
+-        if (this.envVars != null) envVars.putAll(this.envVars);
++                if (this.envVars != null) envVars.putAll(this.envVars);
++
++        // Kirin 9000WL: reserve the four performance cores (CPU 4-7) for Box64.
++        envVars.put("BOX64_MAXCPU", "8-4,5,6,7");
++        // Maleoon 910 compatibility/performance defaults; these are mandatory.
++        envVars.put("GALLIUM_DRIVER", "panfrost");
++        envVars.put("TU_DEBUG", "noconform");
+
+         File shmDir = new File(rootDir, "/tmp/shm");
+         if (!shmDir.isDirectory()) shmDir.mkdirs();
