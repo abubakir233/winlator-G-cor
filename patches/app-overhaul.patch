@@ -1,7 +1,27 @@
 diff --git a/app/build.gradle b/app/build.gradle
-index e790c64..183b0ab 100644
+index e790c64..919837e 100644
 --- a/app/build.gradle
 +++ b/app/build.gradle
+@@ -10,6 +10,9 @@ android {
+         targetSdkVersion 28
+         versionCode 32
+         versionName "11.2"
++        ndk {
++            abiFilters 'arm64-v8a', 'x86_64'
++        }
+     }
+
+     buildTypes {
+@@ -17,9 +20,6 @@ android {
+             minifyEnabled true
+             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+-            ndk {
+-                abiFilters 'arm64-v8a'
+-            }
+         }
+     }
+
 @@ -27,7 +27,7 @@ android {
          checkReleaseBuilds false
      }

@@ -46,7 +46,7 @@ jobs:
 
       - name: Install Android build dependencies
         run: |
-          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmdline-tools;latest" "cmake;3.22.1" "ndk;${ANDROID_NDK_VERSION}"
+          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmake;3.22.1" "ndk;${ANDROID_NDK_VERSION}"
           yes | sdkmanager --licenses >/dev/null || true
 
       - name: Make build scripts executable
