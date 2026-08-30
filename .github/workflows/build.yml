@@ -28,6 +28,12 @@ jobs:
       - name: Apply app submodule overhaul patch
         run: git -C app apply -p1 ../patches/app-overhaul.patch
 
+      - name: Materialize x86_64 fallback sources
+        run: |
+          mkdir -p app/app/src/main/cpp/midihandler app/app/src/main/cpp/libadrenotools/src
+          cp patches/app-src/midihandler_stub.c app/app/src/main/cpp/midihandler/midihandler_stub.c
+          cp patches/app-src/x86_64_stub.c app/app/src/main/cpp/libadrenotools/src/x86_64_stub.c
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
