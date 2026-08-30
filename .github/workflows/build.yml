@@ -41,13 +41,31 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Install pinned Android command-line tools
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${RUNNER_TEMP}/android-sdk"
+          TOOLS_VERSION="11076708"
+          TOOLS_ZIP="${RUNNER_TEMP}/commandlinetools-linux-${TOOLS_VERSION}_latest.zip"
+          rm -rf "${SDK_ROOT}" "${RUNNER_TEMP}/cmdline-tools"
+          mkdir -p "${SDK_ROOT}/cmdline-tools" "${RUNNER_TEMP}/cmdline-tools"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://dl.google.com/android/repository/commandlinetools-linux-${TOOLS_VERSION}_latest.zip" \
+            --output "${TOOLS_ZIP}"
+          unzip -q "${TOOLS_ZIP}" -d "${RUNNER_TEMP}/cmdline-tools"
+          mv "${RUNNER_TEMP}/cmdline-tools/cmdline-tools" "${SDK_ROOT}/cmdline-tools/12.0"
+          {
+            echo "ANDROID_HOME=${SDK_ROOT}"
+            echo "ANDROID_SDK_ROOT=${SDK_ROOT}"
+            echo "ANDROID_CMDLINE_TOOLS_VERSION=12.0"
+          } >> "${GITHUB_ENV}"
+          echo "${SDK_ROOT}/cmdline-tools/12.0/bin" >> "${GITHUB_PATH}"
 
       - name: Install Android build dependencies
         run: |
-          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmake;3.22.1" "ndk;${ANDROID_NDK_VERSION}"
-          yes | sdkmanager --licenses >/dev/null || true
+          set -euo pipefail
+          sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmake;3.22.1" "ndk;${ANDROID_NDK_VERSION}"
+          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null
 
       - name: Make build scripts executable
         run: chmod +x app/gradlew scripts/*.sh
