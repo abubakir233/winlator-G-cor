@@ -64,8 +64,8 @@ jobs:
       - name: Install Android build dependencies
         run: |
           set -euo pipefail
+          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null 2>&1 || true
           sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmake;3.22.1" "ndk;${ANDROID_NDK_VERSION}"
-          yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --licenses >/dev/null
 
       - name: Make build scripts executable
         run: chmod +x app/gradlew scripts/*.sh
