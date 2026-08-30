@@ -22,6 +22,64 @@ index e790c64..e5dbaeb 100644
          }
      }
 
+diff --git a/app/src/main/cpp/gladiorenderer/src/gl_context.c b/app/src/main/cpp/gladiorenderer/src/gl_context.c
+index 3df5852..c298fa7 100644
+--- a/app/src/main/cpp/gladiorenderer/src/gl_context.c
++++ b/app/src/main/cpp/gladiorenderer/src/gl_context.c
+@@ -3,9 +3,41 @@
+ #include "gl_dsa.h"
+ #include "sysvshared_memory.h"
+ #include "request_handler.h"
++#include <stdint.h>
+
+ extern EGLContext globalEGLContext;
+
++static float halfToFloat(GLhalf half) {
++    uint32_t bits = (uint32_t)half;
++    uint32_t sign = (bits & 0x8000u) << 16;
++    uint32_t exponent = (bits >> 10) & 0x1fu;
++    uint32_t mantissa = bits & 0x3ffu;
++    uint32_t floatBits;
++
++    if (exponent == 0) {
++        if (mantissa == 0) floatBits = sign;
++        else {
++            exponent = 127 - 14;
++            while ((mantissa & 0x400u) == 0) {
++                mantissa <<= 1;
++                exponent--;
++            }
++            mantissa &= 0x3ffu;
++            floatBits = sign | (exponent << 23) | (mantissa << 13);
++        }
++    }
++    else if (exponent == 0x1fu) {
++        floatBits = sign | 0x7f800000u | (mantissa << 13);
++    }
++    else {
++        floatBits = sign | ((exponent + 112) << 23) | (mantissa << 13);
++    }
++
++    float result;
++    memcpy(&result, &floatBits, sizeof(result));
++    return result;
++}
++
+ pthread_mutex_t glx_context_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+ static void loadJMethods(JMethods* jmethods) {
+@@ -365,10 +397,8 @@ static void internalReadVertexArrayElement(GLContext* context, int arrayIdx, int
+         }
+         case GL_HALF_FLOAT: {
+             const GLhalf* values = srcValues;
+-            _Float16 value;
+             for (int i = 0; i < vertexAttrib->size; i++) {
+-                memcpy(&value, &values[i], sizeof(value));
+-                dstValues[i] = (float)value;
++                dstValues[i] = halfToFloat(values[i]);
+             }
+             break;
+         }
 diff --git a/app/src/main/cpp/libadrenotools/CMakeLists.txt b/app/src/main/cpp/libadrenotools/CMakeLists.txt
 index 16c6092..9a2f339 100644
 --- a/app/src/main/cpp/libadrenotools/CMakeLists.txt
@@ -71,17 +129,6 @@ index c2e92b0..8a48013 100644
  endif()
 
  project(linkernsbypass LANGUAGES CXX)
-diff --git a/app/src/main/cpp/libadrenotools/src/x86_64_stub.c b/app/src/main/cpp/libadrenotools/src/x86_64_stub.c
-new file mode 100644
-index 0000000..b402e0d
---- /dev/null
-+++ b/app/src/main/cpp/libadrenotools/src/x86_64_stub.c
-@@ -0,0 +1,5 @@
-+// The Adrenotools implementation uses ARM64 instructions and Android linker
-+// internals. Keep the optional targets available for x86_64 builds without
-+// attempting to compile the ARM64-only implementation.
-+void winlator_x86_64_adrenotools_stub(void) {
-+}
 diff --git a/app/src/main/cpp/midihandler/CMakeLists.txt b/app/src/main/cpp/midihandler/CMakeLists.txt
 index 1c9c0e2..0ebb411 100644
 --- a/app/src/main/cpp/midihandler/CMakeLists.txt
@@ -226,57 +273,6 @@ index 1c9c0e2..0ebb411 100644
 +    add_library(midihandler SHARED midihandler_stub.c)
 +    target_link_libraries(midihandler log)
 +endif()
-diff --git a/app/src/main/cpp/midihandler/midihandler_stub.c b/app/src/main/cpp/midihandler/midihandler_stub.c
-new file mode 100644
-index 0000000..2e2004f
---- /dev/null
-+++ b/app/src/main/cpp/midihandler/midihandler_stub.c
-@@ -0,0 +1,45 @@
-+#include <jni.h>
-+
-+JNIEXPORT jlong JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_nativeAllocate(JNIEnv *env, jobject obj) {
-+    return 0;
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_destroy(JNIEnv *env, jobject obj, jlong nativePtr) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_noteOn(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                jint channel, jint note, jint velocity) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_noteOff(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                 jint channel, jint note) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_loadSoundFont(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                       jstring soundFontPath) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_programChange(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                       jint channel, jint program) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_controlChange(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                       jint channel, jint control, jint value) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_pitchBend(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                   jint channel, jint value) {
-+}
-+
-+JNIEXPORT void JNICALL
-+Java_com_winlator_winhandler_MIDIHandler_keyPressure(JNIEnv *env, jobject obj, jlong nativePtr,
-+                                                     jint channel, jint key, jint value) {
-+}
 diff --git a/app/src/main/java/com/winlator/XServerDisplayActivity.java b/app/src/main/java/com/winlator/XServerDisplayActivity.java
 index 0d3ba7b..6055588 100644
 --- a/app/src/main/java/com/winlator/XServerDisplayActivity.java
