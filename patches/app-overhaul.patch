@@ -10,190 +10,78 @@ index e790c64..e5dbaeb 100644
 +            abiFilters 'arm64-v8a', 'x86_64'
 +        }
      }
- 
+
      buildTypes {
 @@ -17,9 +20,6 @@ android {
              minifyEnabled true
              proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
- 
+
 -            ndk {
 -                abiFilters 'arm64-v8a'
 -            }
          }
      }
- 
+
 diff --git a/app/src/main/cpp/libadrenotools/CMakeLists.txt b/app/src/main/cpp/libadrenotools/CMakeLists.txt
-index 16c6092..a4f1471 100644
+index 16c6092..9a2f339 100644
 --- a/app/src/main/cpp/libadrenotools/CMakeLists.txt
 +++ b/app/src/main/cpp/libadrenotools/CMakeLists.txt
-@@ -1,7 +1,7 @@
+@@ -1,11 +1,28 @@
  cmake_minimum_required(VERSION 3.14)
- 
+
 -if(NOT ${CMAKE_ANDROID_ARCH_ABI} STREQUAL arm64-v8a)
 -	message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Please make an issue on the repo!")
 +if(NOT (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a" OR CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64"))
-+	message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Only arm64-v8a and x86_64 are supported.")
++    message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Only arm64-v8a and x86_64 are supported.")
  endif()
- 
+
  project(adrenotools LANGUAGES CXX C)
+
++if(CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64")
++    set(X86_64_STUB ${CMAKE_CURRENT_SOURCE_DIR}/src/x86_64_stub.c)
++    add_library(linkernsbypass STATIC ${X86_64_STUB})
++    add_library(adrenotools SHARED ${X86_64_STUB})
++    add_library(hook_impl SHARED ${X86_64_STUB})
++    add_library(main_hook SHARED ${X86_64_STUB})
++    add_library(file_redirect_hook SHARED ${X86_64_STUB})
++    add_library(gsl_alloc_hook SHARED ${X86_64_STUB})
++    target_link_libraries(linkernsbypass android dl)
++    target_link_libraries(adrenotools android linkernsbypass)
++    target_link_libraries(hook_impl log)
++    target_link_libraries(main_hook hook_impl)
++    target_link_libraries(file_redirect_hook hook_impl)
++    target_link_libraries(gsl_alloc_hook hook_impl)
++    return()
++endif()
++
+ set(GEN_INSTALL_TARGET OFF CACHE BOOL "")
+
+ add_subdirectory(lib/linkernsbypass)
 diff --git a/app/src/main/cpp/libadrenotools/lib/linkernsbypass/CMakeLists.txt b/app/src/main/cpp/libadrenotools/lib/linkernsbypass/CMakeLists.txt
 index c2e92b0..8a48013 100644
 --- a/app/src/main/cpp/libadrenotools/lib/linkernsbypass/CMakeLists.txt
 +++ b/app/src/main/cpp/libadrenotools/lib/linkernsbypass/CMakeLists.txt
 @@ -1,7 +1,7 @@
  cmake_minimum_required(VERSION 3.14)
- 
+
 -if(NOT ${CMAKE_ANDROID_ARCH_ABI} STREQUAL arm64-v8a)
 -	message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Please make an issue on the repo!")
 +if(NOT (CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a" OR CMAKE_ANDROID_ARCH_ABI STREQUAL "x86_64"))
 +	message(FATAL_ERROR "Unsupported target architecture: ${CMAKE_ANDROID_ARCH_ABI}. Only arm64-v8a and x86_64 are supported.")
  endif()
- 
+
  project(linkernsbypass LANGUAGES CXX)
-diff --git a/app/src/main/cpp/midihandler/CMakeLists.txt b/app/src/main/cpp/midihandler/CMakeLists.txt
-index 1c9c0e2..0ebb411 100644
---- a/app/src/main/cpp/midihandler/CMakeLists.txt
-+++ b/app/src/main/cpp/midihandler/CMakeLists.txt
-@@ -2,90 +2,51 @@ cmake_minimum_required(VERSION 3.22.1)
- 
- project(MIDIHandler)
- 
--set(JNILIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../jniLibs/arm64-v8a)
--
--add_library(libc++_shared SHARED IMPORTED)
--set_target_properties(libc++_shared PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libc++_shared.so)
--
--add_library(libFLAC SHARED IMPORTED)
--set_target_properties(libFLAC PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libFLAC.so)
--
--add_library(libfluidsynth SHARED IMPORTED)
--set_target_properties(libfluidsynth PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libfluidsynth.so)
--
--add_library(libfluidsynth-assetloader SHARED IMPORTED)
--set_target_properties(libfluidsynth-assetloader PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libfluidsynth-assetloader.so)
--
--add_library(libgio-2.0 SHARED IMPORTED)
--set_target_properties(libgio-2.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libgio-2.0.so)
--
--add_library(libglib-2.0 SHARED IMPORTED)
--set_target_properties(libglib-2.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libglib-2.0.so)
--
--add_library(libgmodule-2.0 SHARED IMPORTED)
--set_target_properties(libgmodule-2.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libgmodule-2.0.so)
--
--add_library(libgobject-2.0 SHARED IMPORTED)
--set_target_properties(libgobject-2.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libgobject-2.0.so)
--
--add_library(libgthread-2.0 SHARED IMPORTED)
--set_target_properties(libgthread-2.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libgthread-2.0.so)
--
--add_library(libinstpatch-1.0 SHARED IMPORTED)
--set_target_properties(libinstpatch-1.0 PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libinstpatch-1.0.so)
--
--add_library(liboboe SHARED IMPORTED)
--set_target_properties(liboboe PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/liboboe.so)
--
--add_library(libogg SHARED IMPORTED)
--set_target_properties(libogg PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libogg.so)
--
--add_library(libopus SHARED IMPORTED)
--set_target_properties(libopus PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libopus.so)
--
--add_library(libpcre SHARED IMPORTED)
--set_target_properties(libpcre PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpcre.so)
--
--add_library(libpcreposix SHARED IMPORTED)
--set_target_properties(libpcreposix PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libpcreposix.so)
--
--add_library(libsndfile SHARED IMPORTED)
--set_target_properties(libsndfile PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libsndfile.so)
--
--add_library(libvorbis SHARED IMPORTED)
--set_target_properties(libvorbis PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libvorbis.so)
--
--add_library(libvorbisenc SHARED IMPORTED)
--set_target_properties(libvorbisenc PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libvorbisenc.so)
--
--add_library(libvorbisfile SHARED IMPORTED)
--set_target_properties(libvorbisfile PROPERTIES IMPORTED_LOCATION ${JNILIBS_DIR}/libvorbisfile.so)
--
--find_package(OpenMP REQUIRED)
--
--add_library(midihandler SHARED
--            midihandler.c)
--
--target_include_directories(midihandler PRIVATE fluidsynth/include)
--
--target_link_libraries(midihandler
--                      libFLAC
--                      libfluidsynth-assetloader
--                      libgio-2.0
--                      libglib-2.0
--                      libgmodule-2.0
--                      libgobject-2.0
--                      libgthread-2.0
--                      libinstpatch-1.0
--                      liboboe
--                      libogg
--                      libopus
--                      libpcre
--                      libpcreposix
--                      libsndfile
--                      libvorbis
--                      libvorbisenc
--                      libvorbisfile
--                      libfluidsynth
--                      OpenMP::OpenMP_CXX
--                      log)
-\ No newline at end of file
-+set(JNILIBS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../jniLibs/${CMAKE_ANDROID_ARCH_ABI})
-+set(MIDI_LIBRARY_FILES
-+    libc++_shared.so
-+    libFLAC.so
-+    libfluidsynth.so
-+    libfluidsynth-assetloader.so
-+    libgio-2.0.so
-+    libglib-2.0.so
-+    libgmodule-2.0.so
-+    libgobject-2.0.so
-+    libgthread-2.0.so
-+    libinstpatch-1.0.so
-+    liboboe.so
-+    libogg.so
-+    libopus.so
-+    libpcre.so
-+    libpcreposix.so
-+    libsndfile.so
-+    libvorbis.so
-+    libvorbisenc.so
-+    libvorbisfile.so)
-+
-+set(MIDI_DEPENDENCIES_AVAILABLE TRUE)
-+foreach(LIBRARY_FILE IN LISTS MIDI_LIBRARY_FILES)
-+    if(NOT EXISTS "${JNILIBS_DIR}/${LIBRARY_FILE}")
-+        set(MIDI_DEPENDENCIES_AVAILABLE FALSE)
-+    endif()
-+endforeach()
-+
-+if(MIDI_DEPENDENCIES_AVAILABLE)
-+    set(MIDI_DEPENDENCY_TARGETS)
-+    foreach(LIBRARY_FILE IN LISTS MIDI_LIBRARY_FILES)
-+        get_filename_component(LIBRARY_NAME "${LIBRARY_FILE}" NAME_WE)
-+        add_library(${LIBRARY_NAME} SHARED IMPORTED)
-+        set_target_properties(${LIBRARY_NAME} PROPERTIES
-+            IMPORTED_LOCATION "${JNILIBS_DIR}/${LIBRARY_FILE}")
-+        list(APPEND MIDI_DEPENDENCY_TARGETS ${LIBRARY_NAME})
-+    endforeach()
-+
-+    find_package(OpenMP REQUIRED)
-+    add_library(midihandler SHARED midihandler.c)
-+    target_include_directories(midihandler PRIVATE fluidsynth/include)
-+    target_link_libraries(midihandler ${MIDI_DEPENDENCY_TARGETS} OpenMP::OpenMP_CXX log)
-+else()
-+    message(STATUS "MIDI third-party libraries unavailable for ${CMAKE_ANDROID_ARCH_ABI}; building no-op MIDI backend")
-+    add_library(midihandler SHARED midihandler_stub.c)
-+    target_link_libraries(midihandler log)
-+endif()
+diff --git a/app/src/main/cpp/libadrenotools/src/x86_64_stub.c b/app/src/main/cpp/libadrenotools/src/x86_64_stub.c
+new file mode 100644
+index 0000000..b402e0d
+--- /dev/null
++++ b/app/src/main/cpp/libadrenotools/src/x86_64_stub.c
+@@ -0,0 +1,5 @@
++// The Adrenotools implementation uses ARM64 instructions and Android linker
++// internals. Keep the optional targets available for x86_64 builds without
++// attempting to compile the ARM64-only implementation.
++void winlator_x86_64_adrenotools_stub(void) {
++}
 diff --git a/app/src/main/cpp/midihandler/midihandler_stub.c b/app/src/main/cpp/midihandler/midihandler_stub.c
 new file mode 100644
 index 0000000..2e2004f
@@ -250,7 +138,7 @@ index 0d3ba7b..6055588 100644
 --- a/app/src/main/java/com/winlator/XServerDisplayActivity.java
 +++ b/app/src/main/java/com/winlator/XServerDisplayActivity.java
 @@ -499,7 +499,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
- 
+
              envVars.putAll(container.getEnvVars());
              if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
 -            if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1");
@@ -259,7 +147,7 @@ index 0d3ba7b..6055588 100644
 +            for (String name : defaultEnvVars) {
 +                if (!envVars.has(name)) envVars.put(name, defaultEnvVars.get(name));
 +            }
- 
+
              guestProgramLauncherComponent.setBox64Preset(shortcut != null ? shortcut.getExtra("box64Preset", container.getBox64Preset()) : container.getBox64Preset());
          }
 diff --git a/app/src/main/java/com/winlator/box64/Box64PresetManager.java b/app/src/main/java/com/winlator/box64/Box64PresetManager.java
@@ -283,7 +171,7 @@ index 2086786..52d37ba 100644
 +++ b/app/src/main/java/com/winlator/container/Container.java
 @@ -17,7 +17,7 @@ import java.io.File;
  import java.util.Iterator;
- 
+
  public class Container {
 -    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 TU_DEBUG=noconform";
 +    public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 DXVK_ASYNC=1 TU_DEBUG=noconform WINE_FULLSCREEN_FSR=1 WINE_FULLSCREEN_FSR_STRENGTH=2";
@@ -296,7 +184,7 @@ index 45526fd..55f1ef0 100644
 +++ b/app/src/main/java/com/winlator/renderer/FullscreenTransformation.java
 @@ -15,12 +15,12 @@ public class FullscreenTransformation {
      }
- 
+
      public void update(ScreenInfo screenInfo, short originWidth, short originHeight) {
 -        short targetHeight = (short)Math.min(screenInfo.height, ((float)screenInfo.width / originWidth) * originHeight);
 -        short targetWidth = (short)(((float)targetHeight / originHeight) * originWidth);
@@ -311,7 +199,7 @@ index 45526fd..55f1ef0 100644
 +        this.width = screenInfo.width;
 +        this.height = screenInfo.height;
      }
- 
+
      public short[] transformPointerCoords(short x, short y) {
 diff --git a/app/src/main/java/com/winlator/renderer/ViewTransformation.java b/app/src/main/java/com/winlator/renderer/ViewTransformation.java
 index f2ea516..ba01403 100644
@@ -319,7 +207,7 @@ index f2ea516..ba01403 100644
 +++ b/app/src/main/java/com/winlator/renderer/ViewTransformation.java
 @@ -12,15 +12,17 @@ public class ViewTransformation {
      public float sceneOffsetY;
- 
+
      public void update(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
 -        aspect = Math.min((float)outerWidth / innerWidth, (float)outerHeight / innerHeight);
 -        viewWidth = (int)Math.ceil(innerWidth * aspect);
@@ -333,7 +221,7 @@ index f2ea516..ba01403 100644
 +        viewHeight = outerHeight;
 +        viewOffsetX = 0;
 +        viewOffsetY = 0;
- 
+
 -        sceneScaleX = (innerWidth * aspect) / outerWidth;
 -        sceneScaleY = (innerHeight * aspect) / outerHeight;
 -        sceneOffsetX = (innerWidth - innerWidth * sceneScaleX) * 0.5f;
@@ -350,7 +238,7 @@ index 5d04f4d..70e724f 100644
 +++ b/app/src/main/java/com/winlator/widget/TouchpadView.java
 @@ -74,15 +74,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
      }
- 
+
      private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
 -        ViewTransformation viewTransformation = new ViewTransformation();
 -        viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
@@ -364,7 +252,7 @@ index 5d04f4d..70e724f 100644
 +        // Keep input coordinates aligned with the renderer's non-uniform full-screen stretch.
 +        XForm.makeScale(xform, (float)innerWidth / outerWidth, (float)innerHeight / outerHeight);
      }
- 
+
      private class Finger {
 diff --git a/app/src/main/java/com/winlator/xenvironment/RootFS.java b/app/src/main/java/com/winlator/xenvironment/RootFS.java
 index a1aeba7..ae3fdd3 100644
@@ -376,19 +264,19 @@ index a1aeba7..ae3fdd3 100644
      private final File rootDir;
 -    private String winePath = "/opt/wine";
 +    private String winePath = "";
- 
+
      private RootFS(File rootDir) {
          this.rootDir = rootDir;
 @@ -60,7 +60,9 @@ public class RootFS {
      }
- 
+
      public String getWinePath() {
 -        return winePath;
 +        if (!winePath.isEmpty()) return winePath;
 +        File protonWine = new File(rootDir, "/opt/proton-ge/files");
 +        return protonWine.isDirectory() ? "/opt/proton-ge/files" : "/opt/wine";
      }
- 
+
      public void setWinePath(String winePath) {
 diff --git a/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java b/app/src/main/java/com/winlator/xenvironment/components/GuestProgramLauncherComponent.java
 index 84c4702..8f7ff0a 100644
@@ -402,7 +290,7 @@ index 84c4702..8f7ff0a 100644
 +        envVars.put("BOX64_LD_LIBRARY_PATH", rootDir+"/opt/glibc/lib:"+rootDir+"/lib/x86_64-linux-gnu");
 +        envVars.put("WINLATOR_GLIBC_ROOT", rootDir+"/opt/glibc");
          envVars.put("ANDROID_SYSVSHM_SERVER", rootDir+UnixSocketConfig.SYSVSHM_SERVER_PATH);
- 
+
          if (this.envVars != null) envVars.putAll(this.envVars);
 @@ -143,7 +144,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
          envVars.put("BOX64_NOBANNER", box64Logs >= 1 ? "0" : "1");
@@ -413,16 +301,16 @@ index 84c4702..8f7ff0a 100644
 +        // Kirin devices commonly expose four performance cores as CPUs 4-7.
 +        // Override box64_cpu_affinity for devices with a different topology.
 +        envVars.put("BOX64_MAXCPU", preferences.getString("box64_cpu_affinity", "8-4,5,6,7"));
- 
+
          if (box64Logs >= 1) {
              envVars.put("BOX64_LOG", "1");
 @@ -168,6 +172,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
          }
- 
+
          envVars.putAll(Box64PresetManager.getEnvVars(context, box64Preset));
 +        envVars.put("BOX64_DYNAREC_BIGBLOCK", "1");
 +        envVars.put("BOX64_DYNAREC_STRONGMEM", "1");
- 
+
          File box64RCFile = new File(rootFS.getRootDir(), "/etc/config.box64rc");
          envVars.put("BOX64_RCFILE", box64RCFile.getPath());
 diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
