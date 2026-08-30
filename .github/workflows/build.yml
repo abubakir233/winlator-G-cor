@@ -1,0 +1,84 @@
+name: Build Winlator G-cor
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  JAVA_VERSION: '17'
+  ANDROID_PLATFORM: 'android-35'
+  ANDROID_BUILD_TOOLS: '35.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Apply app submodule overhaul patch
+        run: git -C app apply ../patches/app-overhaul.patch
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build dependencies
+        run: |
+          sdkmanager "platform-tools" "platforms;${ANDROID_PLATFORM}" "build-tools;${ANDROID_BUILD_TOOLS}" "cmake;3.22.1" "ndk;24.0.8215888"
+          yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Make build scripts executable
+        run: chmod +x app/gradlew scripts/*.sh
+
+      - name: Resolve and verify latest ARM64 runtimes
+        run: scripts/fetch-runtime-assets.sh
+
+      - name: Build runtime rootfs overlay
+        run: scripts/build-runtime-rootfs.sh
+
+      - name: Build native C++ backend and Java frontend
+        working-directory: app
+        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+
+      - name: Verify APK output
+        run: |
+          test -s app/app/build/outputs/apk/release/app-release.apk
+          sha256sum app/app/build/outputs/apk/release/app-release.apk > app-release.apk.sha256
+
+      - name: Upload APK and runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: winlator-g-cor-release
+          path: |
+            app/app/build/outputs/apk/release/app-release.apk
+            app-release.apk.sha256
+            runtime-rootfs.tar.xz
+            runtime-cache/runtime.env
+
+      - name: Create GitHub Release on main push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Winlator G-cor build ${{ github.run_number }}
+          generate_release_notes: true
+          files: |
+            app/app/build/outputs/apk/release/app-release.apk
+            app-release.apk.sha256
+            runtime-rootfs.tar.xz
+            runtime-cache/runtime.env
